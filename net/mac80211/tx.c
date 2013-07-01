@@ -1678,6 +1678,12 @@ static void timer_queue_process(unsigned long);
 #define CODING_SCHEDULE_OK	0
 #define CODING_SCHEDULE_NEXT	1
 
+/**
+ * relay selection (FAKE)
+ * modified by                                          James Tsunghsiao Pan (100062587)
+ * purpose:                                             select relay node
+ */
+
 int relay_select(u8 *src, u8 *dst, u8 *relay){
 	u8 addr1[6] = {0x1c, 0x4b, 0xd6, 0x8c, 0xc3, 0xbc};
 	u8 addr2[6] = {0x44, 0x6d, 0x57, 0x47, 0x27, 0xcb};
@@ -1739,9 +1745,7 @@ static int timer_tx_process(unsigned long data)
 	if(qEle->finished || qEle->tx_number > qEle->batch.qlen*BATCH_TX_THRESH)
 		goto done;
 
-	//if(qEle->tx_number == 0) printk(KERN_DEBUG "[mac80211] TX: start coding\n");
 coding:
-	//printk(KERN_DEBUG "[mac80211] TX: start coding\n");
 	// get the header
 	hdr = (struct ieee80211_hdr *) qEle->batch.next->data;
 	
@@ -1781,7 +1785,6 @@ fail:
 	memset(pureData, 0, qEle->max_size);
 	
 	// coding
-	//printk(KERN_DEBUG "[mac80211] TX: coding...\n");
 	for(i = 0, seq = qEle->seq; i < (qEle->batch).qlen; i++){
 		tx_skb = skb_dequeue(&qEle->batch);
 		
@@ -1808,7 +1811,7 @@ fail:
 	if( ieee80211_skb_resize(qEle->sdata, coded_pkt, hdrlen, true))
 		goto fail;
 	
-	//add the header
+	// add the header
 	for(i = 0; i < chdr.more_data_len; i++)
 		memcpy(skb_push(coded_pkt, 6), relay, 6);
 	memcpy(skb_push(coded_pkt, 4), &chdr, 4);
@@ -1819,7 +1822,6 @@ fail:
 	coded_pkt->priority = 3;
 	
 	// Tx
-	//printk(KERN_DEBUG "[mac80211] TX: coding pkt TXing... (id=%x, seq=%x/%x)\n", qEle->id, qEle->seq, qEle->batch.qlen);
 	ieee80211_xmit(qEle->sdata, coded_pkt);
 	qEle->tx_number++;
 	if(unlikely(qEle->seq == 0xff)) 
@@ -1827,10 +1829,8 @@ fail:
 	else
 		qEle->seq++;
 	
-	//printk(KERN_DEBUG "[mac80211] TX: done coding\n");
 	if(qEle->tx_number < qEle->batch.qlen) goto coding;
 
-//out:
 	spin_lock(&bs_lock);
 	qEle->addr.prev = coding_schedule.prev;
         coding_schedule.prev->next = &qEle->addr;
@@ -1842,8 +1842,6 @@ fail:
 
 // END BATCH
 done:
-	//if(qEle->tx_number > qEle->batch.qlen*BATCH_TX_THRESH)
-		//printk(KERN_DEBUG "[mac80211] TX: TX 3 times of batch size! Force stop!\n");
 	printk(KERN_DEBUG "[mac80211] TX: #tx=%d/%d\n", qEle->tx_number, qEle->batch.qlen);
 	qEle->finished = false;
 	qEle->id++;
@@ -1870,6 +1868,11 @@ done:
 	return CODING_SCHEDULE_NEXT;
 }
 
+/**
+ * tx_finish_remove
+ * modified by                                          James Tsunghsiao Pan (100062587)
+ */
+
 void tx_finish_remove(unsigned long data){
 	struct batch_schedule *pt = coding_schedule.next;
 
@@ -1891,6 +1894,12 @@ void tx_finish_remove(unsigned long data){
 	spin_unlock(&bs_lock);
 }
 
+/**
+ * transmission scheduling
+ * modified by                                          James Tsunghsiao Pan (100062587)
+ * purpose:                                             TX scheduling
+ */
+
 bool tx_finish_repair(void){
 	unsigned long data;
 
@@ -1899,8 +1908,6 @@ bool tx_finish_repair(void){
 		data = coding_schedule.next->data;
 		coding_schedule.next->next->prev = &coding_schedule;
 		coding_schedule.next = coding_schedule.next->next;
-		//coding_schedule.next->prev->next = &coding_schedule;
-		//coding_schedule.next = coding_schedule.prev->prev;
 		spin_unlock(&bs_lock);
 		if(!timer_tx_process(data))
 			return true;
@@ -1939,8 +1946,6 @@ static void timer_queue_process(unsigned long data)
 	for(i = 0; i < qlen && !skb_queue_empty(&qEle->qhead); i++)
 		skb_queue_tail(&qEle->batch, skb_dequeue(&qEle->qhead));
 
-	//printk(KERN_DEBUG "[mac80211] TX: SIZE=%d\n", qEle->batch.qlen);
-	
 	// find max size
 	for(i = 0; i < qlen; i++) {
 		tx_skb = skb_dequeue(&qEle->batch);
@@ -1959,7 +1964,6 @@ static void timer_queue_process(unsigned long data)
 		spin_lock(&bs_lock);
         	if(coding_schedule.next == &coding_schedule) {
 			bs_inprog = false;
-			//is_coding = false;
 		}
         	spin_unlock(&bs_lock);
         } else {
@@ -2014,7 +2018,6 @@ void queue_process(struct ieee80211_sub_if_data *sdata, struct sk_buff *skb)
 		for(pt = qList; pt != NULL; pt = pt->next){
 			if(memcmp(&pt->dst, skb->data+4, 6) == 0) {
 				exist = true;
-				//printk(KERN_DEBUG "[mac80211] TX: tx queue found\n");
 				break;
 			}
 		}
@@ -2070,7 +2073,6 @@ void queue_process(struct ieee80211_sub_if_data *sdata, struct sk_buff *skb)
 	hdr->frame_control |=  cpu_to_le16(IEEE80211_STYPE_CODING);
 	
 	// add to queue
-	//printk(KERN_DEBUG "[mac80211] TX: queuing process\n");
 	skb_queue_tail(&pt->qhead, skb);
 	
 	del_timer(&pt->c_timer);
@@ -2084,7 +2086,6 @@ void queue_process(struct ieee80211_sub_if_data *sdata, struct sk_buff *skb)
 		// stop timer
 		del_timer(&pt->timer);
 		
-		//printk(KERN_DEBUG "[mac80211] TX: ENOUGH SKBs\n");
 		pt->quick_tx = true;
 		timer_queue_process((unsigned long)pt);
 	}
@@ -2103,7 +2104,6 @@ bool isLongEnough(const u8 *addr, int len)
 		return false;
 
 	return true;
-//	return false;
 }
  
 /**

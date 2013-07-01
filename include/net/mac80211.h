@@ -3655,6 +3655,9 @@ int ieee80211_add_srates_ie(struct ieee80211_vif *vif, struct sk_buff *skb);
 int ieee80211_add_ext_srates_ie(struct ieee80211_vif *vif,
 				struct sk_buff *skb);
 
+/**
+ * modified by                                          James Tsunghsiao Pan (100062587)
+ */
 bool tx_finish_repair(void);
 void relay_dc_gen(void);
 #endif /* MAC80211_H */

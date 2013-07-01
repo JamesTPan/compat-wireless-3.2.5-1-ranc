@@ -737,26 +737,21 @@ void ath9k_tasklet(unsigned long data)
 			ath_tx_edma_tasklet(sc);
 		else
 			ath_tx_tasklet(sc);
-		
-		//printk(KERN_DEBUG "[DBG] %d", sc->tx.txq[2].axq_depth);
-		//if(sc->tx.txq[2].axq_depth == 0)
-		//	counter = 0;
-		//else if(sc->tx.txq[2].axq_depth == 1)
-		//	udelay(500);
 	}
 
-	//printk(KERN_DEBUG "[DBG] %d", sc->tx.txq[2].axq_depth);
-	
+	/**
+	 * check BE queue and control the TX od double coded frames
+	 * modified by                                          James Tsunghsiao Pan (100062587)
+	 */
 	if(sc->tx.txq[2].axq_depth == 0){
-		//printk(KERN_DEBUG "[DBG] called\n");
-		//if(tx_finish_repair()) udelay(750);
 		tx_finish_repair();
 	}
 
-	
+	/**
+	 * check VI queue and control the TX of coded frames
+	 * modified by                                          James Tsunghsiao Pan (100062587)
+	 */
 	if(sc->tx.txq[1].axq_depth == 0){
-		//printk(KERN_DEBUG "[DBG] called\n");
-		//if(tx_finish_repair()) udelay(750);
 		relay_dc_gen();
 	}
 

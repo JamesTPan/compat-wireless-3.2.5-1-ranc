@@ -98,6 +98,10 @@
 #define IEEE80211_STYPE_QOS_CFPOLL		0x00E0
 #define IEEE80211_STYPE_QOS_CFACKPOLL		0x00F0
 
+/**
+ * modified by                                          James Tsunghsiao Pan (100062587)
+ * purpose:                                             extend network coding frame format
+ */
 /* network coding */
 #define IEEE80211_STYPE_CODING		0x0000
 #define IEEE80211_STYPE_DCODING		0x0010
@@ -170,6 +174,10 @@ struct ieee80211_hdr {
 	u8 addr4[6];
 } __attribute__ ((packed));
 
+/**
+ * coding header
+ * modified by                                          James Tsunghsiao Pan (100062587)
+ */
 struct coding_header {
 	u8 batch_id;
 	u8 batch_size;
@@ -177,6 +185,10 @@ struct coding_header {
 	u8 more_data_len;
 } __attribute__ ((packed));
 
+/**
+ * ACK and feedback payload
+ * modified by                                          James Tsunghsiao Pan (100062587)
+ */
 struct batch_header {
 	u8 batch_id;
 	u8 batch_size;
@@ -315,6 +327,7 @@ static inline int ieee80211_is_data(__le16 fc)
 
 /**
  * ieee80211_is_coding - check if type is IEEE80211_FTYPE_CODING
+ * modified by                                          James Tsunghsiao Pan (100062587)
  * @fc: frame control bytes in little endian byteorder
  */
 static inline int ieee80211_is_coding(__le16 fc)
@@ -325,6 +338,7 @@ static inline int ieee80211_is_coding(__le16 fc)
 
 /**
  * ieee80211_is_coding_coding - check if type is IEEE80211_FTYPE_CODING and IEEE80211_STYPE_CODING is set
+ * modified by                                          James Tsunghsiao Pan (100062587)
  * @fc: frame control bytes in little-endian byteorder
  */
 static inline int ieee80211_is_coding_coding(__le16 fc)
@@ -335,6 +349,7 @@ static inline int ieee80211_is_coding_coding(__le16 fc)
 
 /**
  * ieee80211_is_coding_doucoding - check if type is IEEE80211_FTYPE_CODING and IEEE80211_STYPE_CODING is set
+ * modified by                                          James Tsunghsiao Pan (100062587)
  * @fc: frame control bytes in little-endian byteorder
  */
 static inline int ieee80211_is_coding_doucoding(__le16 fc)
@@ -345,6 +360,7 @@ static inline int ieee80211_is_coding_doucoding(__le16 fc)
 
 /**
  * ieee80211_is_coding_batchack - check if type is IEEE80211_FTYPE_CODING and IEEE80211_STYPE_BATCH_ACK is set
+ * modified by                                          James Tsunghsiao Pan (100062587)
  * @fc: frame control bytes in little-endian byteorder
  */
 static inline int ieee80211_is_coding_batchack(__le16 fc)
@@ -355,6 +371,7 @@ static inline int ieee80211_is_coding_batchack(__le16 fc)
 
 /**
  * ieee80211_is_coding_dcrd - check if type is IEEE80211_FTYPE_CODING and IEEE80211_STYPE_DCODING_RD is set
+ * modified by                                          James Tsunghsiao Pan (100062587)
  * @fc: frame control bytes in little-endian byteorder
  */
 static inline int ieee80211_is_coding_dcrd(__le16 fc)

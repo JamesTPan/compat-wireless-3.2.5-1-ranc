@@ -1611,6 +1611,10 @@ int ath9k_hw_reset(struct ath_hw *ah, struct ath9k_channel *chan,
 	if (r)
 		return r;
 
+	/**
+	 * disable ACK
+	 * modified by                                          James Tsunghsiao Pan (100062587)
+	 */
 	REG_SET_BIT(ah, AR_DIAG_SW, AR_DIAG_ACK_DIS);
 
 	/*

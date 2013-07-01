@@ -17,8 +17,6 @@
 #include "led.h"
 #include "wme.h"
 
-#include "queueing.h"
-extern struct batch_schedule coding_schedule;
 
 void ieee80211_tx_status_irqsafe(struct ieee80211_hw *hw,
 				 struct sk_buff *skb)
@@ -377,8 +375,6 @@ void ieee80211_tx_status(struct ieee80211_hw *hw, struct sk_buff *skb)
 
 	sband = local->hw.wiphy->bands[info->band];
 	fc = hdr->frame_control;
-
-	//tx_finish(skb);
 
 	for_each_sta_info(local, hdr->addr1, sta, tmp) {
 		/* skip wrong virtual interface */

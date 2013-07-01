@@ -2043,6 +2043,12 @@ ieee80211_rx_h_mesh_fwding(struct ieee80211_rx_data *rx)
 }
 #endif
 
+/**
+ * decoding using workqueue
+ * modified by                                          James Tsunghsiao Pan (100062587)
+ * purpose:                                             decoding
+ */
+
 void wq_h_decode_and_forward(void)
 {
 	struct matrix_ele *pt;
@@ -2114,6 +2120,12 @@ void wq_h_decode_and_forward(void)
 extern void ieee80211_xmit(struct ieee80211_sub_if_data*, struct sk_buff*);
 extern struct queue_ele *qList;
 extern void tx_finish_remove(unsigned long);
+
+/**
+ * generate double coding frames
+ * modified by                                          James Tsunghsiao Pan (100062587)
+ * purpose:                                             generate frames
+ */
 
 static bool double_coding_frame_gen(struct queue_ele *pt)
 {
@@ -2202,6 +2214,11 @@ static bool double_coding_frame_gen(struct queue_ele *pt)
 	return true;
 }
 
+/**
+ * relay schedule the generation of double coded frame
+ * modified by                                          James Tsunghsiao Pan (100062587)
+ * purpose:                                             scheduling
+ */
 
 void relay_dc_gen(void)
 {
@@ -2267,7 +2284,6 @@ ieee80211_rx_h_coding(struct ieee80211_rx_data *rx)
 		if(compare_ether_addr(sdata->vif.addr, hdr->addr1) != 0)
 			return RX_DROP_UNUSABLE;
 
-		//printk(KERN_DEBUG "[mac80211] RX: double coding packet\n");
 		chdr = (struct coding_header *) (rx->skb->data + 30);
 		// addr switch
 		// addr1 = DST = this STA
@@ -2286,24 +2302,8 @@ ieee80211_rx_h_coding(struct ieee80211_rx_data *rx)
 		if(compare_ether_addr(sdata->vif.addr, hdr->addr2) == 0)
 			return RX_DROP_UNUSABLE;
 
-		if(compare_ether_addr(sdata->vif.addr, hdr->addr1) != 0){
-			//printk(KERN_DEBUG "[mac80211] Overhear ACK id=%X frome %X:%X:%X:%X:%X:%X for %X:%X:%X:%X:%X:%X", 
-			//						bAck_hdr->batch_id,
-			//						hdr->addr2[0],
-			//						hdr->addr2[1],
-			//						hdr->addr2[2],
-			//						hdr->addr2[3],
-			//						hdr->addr2[4],
-			//						hdr->addr2[5],
-			//						hdr->addr1[0],
-			//						hdr->addr1[1],
-			//						hdr->addr1[2],
-			//						hdr->addr1[3],
-			//						hdr->addr1[4],
-			//						hdr->addr1[5]);
-			//return RX_DROP_UNUSABLE;
+		if(compare_ether_addr(sdata->vif.addr, hdr->addr1) != 0)
 			overhear = true;
-		}
 		
 		if(overhear){
 			for(pt = rxList; pt != NULL; pt = pt->next){
@@ -2342,7 +2342,6 @@ skip1:
 		for(pt = qList; pt != NULL; pt = pt->next){
 			if(!compare_ether_addr(hdr->addr2, pt->dst)){
 				if(bAck_hdr->batch_id == pt->id) {
-					//printk(KERN_DEBUG "[mac80211] RX: batch ACK(match)\n");
 					if(!pt->finished){
 						pt->finished = true;
 						tx_finish_remove((unsigned long) pt);
@@ -2361,7 +2360,6 @@ skip1:
 	}
 
 	// coding packets
-	//printk(KERN_DEBUG "[mac80211] RX: coding packet\n");
 	chdr = (struct coding_header *) (rx->skb->data + 24);	
 
 	if(compare_ether_addr(sdata->vif.addr, hdr->addr1) != 0) {
@@ -2374,12 +2372,6 @@ skip1:
 				break;
 			}
 
-		//if(overhear) printk(KERN_DEBUG "[mac80211] Overhear frame for %X:%X:%X:%X:%X:%X", hdr->addr1[0],
-		//								     hdr->addr1[1],
-		//								     hdr->addr1[2],
-		//								     hdr->addr1[3],
-		//								     hdr->addr1[4],
-		//								     hdr->addr1[5]);
 		if(!overhear) return RX_DROP_UNUSABLE;
 	}
 	
@@ -2490,7 +2482,6 @@ find_queue:
 	pt->c_timer.data = ((unsigned long) pt);
 	add_timer(&pt->c_timer);
 
-//recheck:
 	// batch collecting control
 	if((pt->id == chdr->batch_id) && (pt->finished)){
 		if(overhear){
@@ -2519,17 +2510,14 @@ find_queue:
 		}
 
 		goto reack;
-		//return RX_DROP_UNUSABLE;
 	} else if((pt->matrix == NULL && !overhear) || (overhear && skb_queue_empty(&pt->batch))){
 		// initialization for used queue
 		pt->id = chdr->batch_id;
 		pt->finished = false;
 	} else if(pt->id != chdr->batch_id){
 		// previous batch	
-		//if(ieee80211_is_coding_doucoding(hdr->frame_control)){
 		if((pt->id - chdr->batch_id + 0xff)%0xff < 5)
 			return RX_DROP_UNUSABLE;
-		//}
 
 		//free matrix
 		if(pt->matrix != NULL){
@@ -2586,70 +2574,6 @@ skip2:
 			dc_schedule.prev = &pt->addr;
 		}
 		spin_unlock(&dcs_lock);
-
-		/*
-		while(0){ 
-			if(pt->tx_number >= RELAY_THRESH){
-				pt->tx_number -= RELAY_THRESH;
-				chdr_len = 4 + chdr->more_data_len*6;
-				data_len = rx->skb->tail - rx->skb->data - 24 - chdr_len;
-
-				dhdr.frame_control = cpu_to_le16(IEEE80211_FTYPE_CODING|IEEE80211_STYPE_DCODING);
-				// we will use the 4th addr space when TX a double coding frame
-				// addr1 = DST
-				// addr2 = RELAY = STA
-				// addr3 = BSSID
-				// addr4 = SRC
-				// NOTE: addr2 and addr4 will be switched at DST
-				memcpy(dhdr.addr1, hdr->addr1, ETH_ALEN);
-				memcpy(dhdr.addr2, sdata->vif.addr, ETH_ALEN);
-				memcpy(dhdr.addr3, hdr->addr3, ETH_ALEN);
-				memcpy(dhdr.addr4, hdr->addr2, ETH_ALEN);
-				dhdr.duration_id = 0;
-				dhdr.seq_ctrl = 0;
-
-				dchdr.batch_id = chdr->batch_id;
-				dchdr.batch_size = chdr->batch_size;
-				dchdr.seq_num = pt->seq++;
-				if(unlikely(pt->seq == 0)) pt->seq = 2;
-				else if(unlikely(pt->seq == 1)) pt->seq = 2;
-				dchdr.more_data_len = pt->batch.qlen;
-
-				pureData = (u8 *) kmalloc(data_len, GFP_ATOMIC);
-				memset(pureData, 0, data_len);
-				dcp = alloc_skb(34 + dchdr.more_data_len + data_len, GFP_ATOMIC);
-				memcpy(skb_put(dcp, 30), &dhdr,30);
-				memcpy(skb_put(dcp, 4), &dchdr,4);
-
-				// double coding 
-				for(i = 0, seq = dchdr.seq_num; i < dchdr.more_data_len; i++){
-					skb = skb_dequeue(&pt->batch);
-					chdr = (struct coding_header *)(skb->data + 24);
-					chdr_len = 4 + chdr->more_data_len*6;
-					memcpy(skb_put(dcp, 1), &(chdr->seq_num), 1);
-					
-					for(j = 0; j < data_len; j++){
-						*(pureData+j) = GFadd((u8) *(pureData+j),
-								      GFmul((u8) *(skb->data+24+chdr_len+j),
-									    seq)
-									   );
-					}
-
-					//kfree_skb(skb);
-					skb_queue_tail(&pt->batch, skb);
-					seq = GFmul(seq, dchdr.seq_num);
-				}
-
-				memcpy(skb_put(dcp, data_len), pureData, data_len);
-				kfree(pureData);
-
-				skb_set_queue_mapping(dcp, 1);
-				dcp->priority = 5;
-
-				//printk(KERN_DEBUG "[mac80211] RX: Double coding pkt TX\n");
-				ieee80211_xmit(sdata, dcp);
-			}
-		} */
 
 		return RX_QUEUED;
 	}
